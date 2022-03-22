@@ -67,7 +67,7 @@ GcompBART <- function(data,
             x[[2]] <- cbind(x[[2]], rbinom(length(tmp[[2]]), 1, prob = tmp[[2]]))
           } else if(continous[j] == TRUE) {
             x[[1]] <- cbind(x[[1]], rnorm(length(tmp[[1]]), mean = tmp[[1]], sd = mean(BModels[[j-1]]$sigma)))
-            x[[2]] <- cbind(x[[2]], rnorm(length(tmp[[2]]), mean = tmp[[1]], sd = mean(BModels[[j-1]]$sigma)))
+            x[[2]] <- cbind(x[[2]], rnorm(length(tmp[[2]]), mean = tmp[[2]], sd = mean(BModels[[j-1]]$sigma)))
           }
         }
       }
