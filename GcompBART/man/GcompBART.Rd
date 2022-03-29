@@ -108,12 +108,12 @@ y <- f(x) + rnorm(n)
 
 ##test GcompBART
 set.seed(99)
-gcbfit <- GcompBART(data = cbind(x, y), var.type = c(rep("C", 4), "Fi", rep("C", 5), "O"), exp.reg = 1, cont.reg = 0, J = 100, Ndraws = 10, Suppress = TRUE)
+gcbfit <- GcompBART(data = cbind(x, y), var.type = c(rep("C", 4), "Fi", rep("C", 5), "O"), regimes = list(1, 0), J = 100, Ndraws = 10, Suppress = TRUE)
 gcbfit$summary
 
 \dontrun{
 ##run GcompBART
-  gcbfit <- GcompBART(data = cbind(x, y), var.type = c(rep("C", 4), "Fi", rep("C", 5), "O"), exp.reg = 1, cont.reg = 0, J = 100, Ndraws = 100, Suppress = TRUE)
+  gcbfit <- GcompBART(data = cbind(x, y), var.type = c(rep("C", 4), "Fi", rep("C", 5), "O"), regimes = list(1, 0), J = 100, Ndraws = 100, Suppress = TRUE)
   gcbfit$summary
 }
 }
