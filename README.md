@@ -3,21 +3,21 @@ title: "GcompBART"
 output: github_document
 ---
 
-## Introduction
+# Introduction
 GcompBART is a framework for performing G-computation using Bayesian Additive Regression Trees. It leverages the modeling capabilities of SoftBart (<https://cran.r-project.org/package=SoftBart>) internally to fit flexible observed data models, with the optional use of a sparsity-inducing prior for longitudinal data as described in Josefsson et al. XXX. The package follows the same interface style as the SoftBart package for ease of use.
 
-## Installation
+# Installation
 From CRAN (once published):
 ```r
 install.packages("GcompBART")
 ```
 
-# Using remotes
+## Using remotes
 ```r
 remotes::install_github("m4ryjo/GcompBART")
 ```
 
-# Or devtools
+## Or devtools
 ```r
 devtools::install_github("m4ryjo/GcompBART")
 ```
