@@ -11,11 +11,7 @@ Authors@R: c(
     )
   )
 Description: Performs g-computation using Soft Bayesian Additive Regression Trees, 
-              as described in Josefsson et al. XXX, with optional sparsity-inducing 
-              priors for longitudinal data. This package builds on and extends the 
-              SoftBart package by Antonio Linero, reusing and adapting components 
-              of its original C++ implementation while maintaining its style for 
-              usability.
+              with optional sparsity-inducing priors for longitudinal data.
 License: GPL-3
 Depends: R (>= 4.0.0)
 Imports: Rcpp, SoftBart, rBeta2009, EnvStats, stats, methods, truncnorm, MASS
