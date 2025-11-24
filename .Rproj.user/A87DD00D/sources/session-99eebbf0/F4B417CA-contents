@@ -1,0 +1,46 @@
+--- title: "GcompBART" output: github_document ---
+GcompBART: G-computation using Bayesian Additive Regression Trees
+Overview
+GcompBART extends https://cran.r-project.org/package=SoftBart for G-computation with time-varying components. It supports flexible Bayesian regression with longitudinal priors and additional hyperparameters for complex data structures.
+Features
+
+Wraps SoftBart for base functionality.
+Adds time-varying extensions: alpha_vec, eta, phi.
+
+Supports grouped predictors via tgroup.
+High-performance implementation using Rcpp.
+Installation
+From CRAN (once published):
+install.packages("GcompBART")
+
+
+
+From GitHub (development version):
+# install.packages("devtools")
+devtools::install_github("yourusername/GcompBART")
+
+
+
+Quick Start
+library(GcompBART)
+
+
+
+Example data
+X <- matrix(rnorm(100), nrow = 20) Y <- rnorm(20)
+Build options
+opts <- Opts(num_burn = 1000, update_tvp = TRUE)
+Build hypers
+hypers <- Hypers(X, Y, tgroup = c(0, 1, 1, 2), alpha_vec = 0.5)
+Fit model (example placeholder)
+fit <- BMfits(X, Y, opts = opts, hypers = hypers)
+
+
+
+Documentation
+
+See ?Opts and ?Hypers for details.
+Vignette: vignette("intro-to-GcompBART")
+License
+##
+GPL-3 © Maria Josefsson

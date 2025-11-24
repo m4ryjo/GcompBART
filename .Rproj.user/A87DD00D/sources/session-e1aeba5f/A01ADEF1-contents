@@ -1,0 +1,17 @@
+exportPattern("^[[:alpha:]]+")
+importFrom(Rcpp, evalCpp, Module)
+importFrom(rBeta2009, rdirichlet)
+importFrom(EnvStats, rtri)
+importFrom("methods", "new")
+importFrom("stats", "ecdf", "na.omit", "pnorm", "qnorm", "quantile",
+           "rbinom", "rmultinom", "rnorm", "runif", "sd")
+useDynLib(GcompBART, .registration = TRUE)
+export(BMfits)
+export(gcompbart)
+export(gc_softbart_probit)
+export(gc_softbart_regression)
+export(Opts)
+export(Hypers)
+
+
+

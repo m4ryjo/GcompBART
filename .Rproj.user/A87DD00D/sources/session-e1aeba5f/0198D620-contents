@@ -1,0 +1,182 @@
+#' Extended Hypers for GcompBART (wraps SoftBart::Hypers)
+#'
+#' This function calls SoftBart::Hypers() to construct the base hyper-parameter
+#' list and then extends it with GcompBART-specific fields (`alpha_vec`, `eta`,
+#' `phi`, plus `tgroup` and `tgroup_size`). By delegating to SoftBart, you
+#' inherit its defaults and future improvements without duplicating logic.
+#'
+#' @param X,Y,group Same as in SoftBart::Hypers()
+#' @param tgroup Integer-like vector (length ncol(X)); GcompLDART-specific grouping.
+#'   If NULL, a default is used.
+#' @param alpha_vec,eta,phi Numeric; GcompLDART-specific extensions.
+#' @inheritParams SoftBart::Hypers
+#' @return list: all SoftBart fields + alpha_vec, eta, phi, tgroup, tgroup_size
+#' @export
+Hypers <- function(
+    X, Y, group = NULL, tgroup = NULL,
+    alpha = 1, eta = 1, phi = 1, alpha_vec = 1,
+    beta = 2, gamma = 0.95, k = 2,
+    sigma_hat = NULL, shape = 1, width = 0.1, num_tree = 20,
+    alpha_scale = NULL, alpha_shape_1 = 0.5,
+    alpha_shape_2 = 1, tau_rate = 10, num_tree_prob = NULL,
+    temperature = 1.0, weights = NULL, normalize_Y = TRUE
+) {
+  # 1) Build the base structure using SoftBart (all defaults are preserved)
+  sb <- SoftBart::Hypers(
+    X = X, Y = Y, group = group,
+    alpha = alpha, beta = beta, gamma = gamma, k = k,
+    sigma_hat = sigma_hat, shape = shape, width = width, num_tree = num_tree,
+    alpha_scale = alpha_scale, alpha_shape_1 = alpha_shape_1,
+    alpha_shape_2 = alpha_shape_2, tau_rate = tau_rate,
+    num_tree_prob = num_tree_prob, temperature = temperature,
+    weights = weights, normalize_Y = normalize_Y
+  )
+
+  # 2) Inject GcompLDART-specific fields
+  sb$alpha_vec <- alpha_vec
+  sb$eta       <- eta
+  sb$phi       <- phi
+
+  # 3) tgroup handling
+  if (is.null(tgroup)) {
+    sb$tgroup <- rep(1L, ncol(X)) - 1L
+  } else {
+    tg <- as.integer(tgroup)
+    sb$tgroup <- tg + ifelse(tg == 0L, 1L, 0L) * max(tg)
+  }
+  sb$tgroup_size <- as.vector(table(sb$tgroup))
+
+  return(sb)
+}
+
+
+
+#' @title Extended Opts for GcompBART
+#' @description Builds the base options via SoftBart::Opts() and then extends with GcompBART-specific update flags for time-varying pieces and alpha_vec.
+#'
+#' @param num_burn Integer; number of burn-in iterations (SoftBart semantics).
+#' @param num_thin Integer; thinning interval (SoftBart semantics).
+#' @param num_save Integer; number of saved iterations (SoftBart semantics).
+#' @param num_print Integer; frequency of printing progress (SoftBart semantics).
+#' @param update_sigma_mu Logical; update sigma_mu flag (SoftBart semantics).
+#' @param update_s Logical; update s flag (SoftBart semantics).
+#' @param update_alpha Logical; update alpha flag (SoftBart semantics).
+#' @param update_beta Logical; update beta flag (SoftBart semantics).
+#' @param update_gamma Logical; update gamma flag (SoftBart semantics).
+#' @param update_tau Logical; update tau flag (SoftBart semantics).
+#' @param update_tau_mean Logical; update tau_mean flag (SoftBart semantics).
+#' @param update_sigma Logical; update sigma flag (SoftBart semantics).
+#' @param cache_trees Logical; cache trees for efficiency (SoftBart semantics).
+#' @param update_tvp Logical; GcompBART-specific extension for time-varying pieces.
+#' @param update_eta Logical; GcompBART-specific extension for eta updates.
+#' @param update_phi Logical; GcompBART-specific extension for phi updates.
+#' @param update_alpha_vec Logical; GcompBART-specific extension for alpha_vec updates.
+#'
+#' @return A named list identical to SoftBart::Opts() plus GcompBART-specific flags.
+#' @examples
+#' opts <- Opts(num_burn = 1000, update_tvp = TRUE)
+#' @export
+Opts <- function(
+    num_burn = 2500, num_thin = 1, num_save = 2500, num_print = 100,
+    update_sigma_mu = TRUE, update_s = TRUE, update_alpha = TRUE,
+    update_beta = FALSE, update_gamma = FALSE, update_tau = TRUE,
+    update_tau_mean = FALSE, update_sigma = TRUE,
+    cache_trees = TRUE,
+    # --- GcompLDART extensions (default FALSE to preserve SoftBart behavior) ---
+    update_tvp = FALSE, update_eta = FALSE, update_phi = FALSE,
+    update_alpha_vec = FALSE
+) {
+  # 1) Build the base list with SoftBart (covers all shared fields + defaults)
+  sb <- SoftBart::Opts(
+    num_burn = num_burn, num_thin = num_thin, num_save = num_save,
+    num_print = num_print,
+    update_sigma_mu = update_sigma_mu, update_s = update_s,
+    update_alpha = update_alpha,
+    update_beta = update_beta, update_gamma = update_gamma,
+    update_tau = update_tau, update_tau_mean = update_tau_mean,
+    update_sigma = update_sigma,
+    cache_trees = cache_trees
+  )
+
+  # 2) Inject GcompBART-only flags
+  sb$update_tvp        <- isTRUE(update_tvp)
+  sb$update_eta        <- isTRUE(update_eta)
+  sb$update_phi        <- isTRUE(update_phi)
+  sb$update_alpha_vec  <- isTRUE(update_alpha_vec)
+
+  # 3) Keep explicit false for update_num_tree to mirror your current shape
+  if (is.null(sb$update_num_tree)) sb$update_num_tree <- FALSE
+
+  return(sb)
+}
+
+
+#' @title MakeForest
+#' @description Creates a Forest object from Rcpp module.
+#' @param hypers List of hyperparameters.
+#' @param opts List of options.
+#' @return An object of class Forest.
+#' @examples
+#' \dontrun{
+#' X <- matrix(rnorm(100), nrow = 10)
+#' Y <- rnorm(10)
+#' hypers <- Hypers(X = X, Y = Y)
+#' opts <- Opts()
+#' forest <- MakeForest(hypers, opts)
+#' }
+#' @export
+MakeForest <- function(hypers, opts) {
+  mf <- Rcpp::Module(module = "mod_forest", PACKAGE = "GcompBART")
+  return(new(mf$Forest, hypers, opts))
+}
+
+#' @title rmvnorm
+#' @description Internal helper wrapping C++ for generating random multivariate normal samples.
+#' @param mean Numeric vector of means.
+#' @param Precision Precision matrix (inverse covariance).
+#' @return A numeric vector or matrix of samples.
+#' @keywords internal
+#' @name rmvnorm
+NULL
+
+#' @title choll
+#' @description Internal helper wrapping C++ for Cholesky decomposition.
+#' @param Sigma Covariance matrix.
+#' @return Cholesky factor.
+#' @keywords internal
+#' @name choll
+NULL
+
+#' @title update_sigma
+#' @description Internal helper wrapping C++ for updating sigma in MCMC.
+#' @param r Numeric value.
+#' @param sigma_hat Estimated sigma.
+#' @param sigma_old Previous sigma value.
+#' @param temperature Temperature parameter for MH step.
+#' @return Updated sigma value.
+#' @keywords internal
+#' @name update_sigma
+NULL
+
+#' @title rlgam
+#' @description Internal helper wrapping C++ for sampling from a gamma distribution.
+#' @param shape Shape parameter.
+#' @return A random gamma value.
+#' @keywords internal
+#' @name rlgam
+NULL
+
+#' @title do_mh
+#' @description Internal helper wrapping C++ for Metropolis-Hastings acceptance step.
+#' @param loglik_new New log-likelihood.
+#' @param loglik_old Old log-likelihood.
+#' @param new_to_old Proposal ratio new→old.
+#' @param old_to_new Proposal ratio old→new.
+#' @return Logical indicating acceptance.
+#' @keywords internal
+#' @name do_mh
+NULL
+
+
+utils::globalVariables(c("opts2", "continuous"))
+

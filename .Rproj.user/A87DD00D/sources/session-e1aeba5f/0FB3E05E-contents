@@ -1,0 +1,95 @@
+gc_softbart_regression <- function(X, Y, X_test = NULL, num_tree = 20, k = 2,
+                                   hypers = NULL, opts = NULL, verbose = TRUE) {
+  # Ensure numeric outcome
+  stopifnot(is.numeric(Y))
+
+  # Normalize Y
+  mu_Y <- mean(Y)
+  sd_Y <- sd(Y)
+  Y_train <- (Y - mu_Y) / sd_Y
+  X_train <- X
+
+  # Set up hypers
+  if (is.null(hypers)) {
+    hypers <- Hypers(X = X_train, Y = Y_train, normalize_Y = FALSE)
+  } else {
+    hypers$X <- X_train
+    hypers$Y <- Y_train
+  }
+
+  hypers$sigma_mu <- 3 / k / sqrt(num_tree)
+  hypers$num_tree <- num_tree
+  hypers$group <- (1:ncol(X_train) - 1)
+
+  # Set up opts
+  if (is.null(opts)) {
+    opts <- Opts()
+  }
+  opts$num_print <- .Machine$integer.max
+
+  # Normalize X
+  make_01_norm <- function(x) {
+    a <- min(x)
+    b <- max(x)
+    function(y) (y - a) / (b - a)
+  }
+
+  ecdfs <- vector("list", ncol(X_train))
+  for (i in seq_along(ecdfs)) {
+    xi <- X_train[, i]
+    if (length(unique(xi)) == 1) {
+      ecdfs[[i]] <- identity
+    } else if (length(unique(xi)) == 2) {
+      ecdfs[[i]] <- make_01_norm(xi)
+    } else {
+      ecdfs[[i]] <- ecdf(xi)
+    }
+  }
+
+  for (i in seq_along(ecdfs)) {
+    XX_train[, i]
+    if (!is.null(X_test)) {
+      X_testX_test[, i]
+    }
+  }
+
+  # Make forest
+  reg_forest <- MakeForest(hypers, opts, FALSE)
+
+  # Warmup
+  for (i in 1:opts$num_burn) {
+    mu <- reg_forest$do_gibbs(X_train, Y_train, X_train, 1)
+  }
+
+  # Accumulate mean predictions
+  mu_train_sum <- rep(0, length(Y_train))
+  mu_test_sum <- if (!is.null(X_test)) rep(0, nrow(X_test)) else NULL
+
+  for (i in 1:opts$num_save) {
+    for (j in 1:opts$num_thin) {
+      mu <- reg_forest$do_gibbs(X_train, Y_train, X_train, 1)
+    }
+
+    mu_train_sum <- mu_train_sum + mu
+    if (!is.null(X_test)) {
+      mu_test_sum <- mu_test_sum + reg_forest$do_predict(X_test)
+    }
+  }
+
+  mu_train_mean <- mu_train_sum / opts$num_save
+  mu_test_mean <- if (!is.null(mu_test_sum)) mu_test_sum / opts$num_save else NULL
+
+  # Return minimal output
+  out <- list(
+    mu_train_mean = mu_train_mean * sd_Y + mu_Y,
+    mu_test_mean = if (!is.null(mu_test_mean)) mu_test_mean * sd_Y + mu_Y else NULL,
+    mu_Y = mu_Y,
+    sd_Y = sd_Y,
+    ecdfs = ecdfs,
+    opts = opts,
+    forest = reg_forest
+  )
+
+  class(out) <- "softbart_regression"
+  return(out)
+}

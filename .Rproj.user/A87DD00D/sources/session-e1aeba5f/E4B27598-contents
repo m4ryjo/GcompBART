@@ -1,0 +1,162 @@
+% 
+\name{BMfits}
+\alias{BMfits}
+\title{Fits the models for the function gcompldart using SoftBart}
+\usage{
+BMfits <- function(data, 
+                      var.type, 
+                      fixed.regime = NULL, 
+                      random.regime = NULL, 
+                      param = NULL, 
+                      threshold = NULL,
+                      above = FALSE,
+                      nat_value = FALSE,
+                      incremental = FALSE,
+                      drop_param = NULL,
+                      J = 2000, # Size of pseudo data. Default is set to 2,000.
+                      opts = NULL, # opts see SoftBart
+                      tgroup = rep(1,  ncol(data) - 1), # note 0 for static and timepoint for tv
+                      Lag1 = FALSE, # Set to TRUE if only lag 1 covariates should be included in the model fitting
+                      num_tree = 20,
+                      alpha = 1,
+                      eta = 1,
+                      phi = rep(1, max(tgroup) - 1),
+                      alpha_vec = rep(1, max(tgroup) - 1),
+                      alpha_shape_1 = 0.5,
+                      Suppress = TRUE, # Indicates if the output should be suppressed. Default is TRUE
+                      By = 100, # If Suppress is set to FALSE, output is provided for the By:th iteration.
+                      ...
+) 
+}
+\arguments{
+\item{data}{data, # A matrix or data frame possibly containing confounder(s), exposure(s), outcome(s) and mortality indicator(s) in temporal order from left to right.}
+
+\item{var.type}{Vector of variable specifications for data. "X" = confounder, "Fi" = fixed (e.g. the exposure), "Ra"= random exposure, "Y" = outcome, "S" = survival, "D" = dropout indicator.}
+
+\item{fixed.regime}{A list specifying the possibly contrasting regime(s) for exposed/treated and unexposed/untreated. Can also be used for fixing a confounder.}
+
+\item{random.regime}{"uniform", "normal" or "skew.normal" default is NULL.}
+
+\item{param}{A vector of length 1 (in the binomial case), 2 (in the uniform/normal case) or 3 (in the skew normal case) whose components represent the parameters linked to a binomial(a), uniform(a, b), a normal(a, b) or a skew normal(a, b, c).}
+
+\item{threshold}{TRUE if threshold intervention.}
+
+\item{above}{TRUE if intervene above threshold.}
+
+\item{drop_param}{A vector of parameters for MNAR dropout. Default is NULL, i.e., MAR missingness among survivers.}
+ 
+\item{J}{Size of pseudo data. Default is set to 2,000.}
+
+\item{tgroup}{Vector indicating time point grouping, 0 for static and the timepoint for time-varying variables. Default is rep(1,  ncol(data) - 1), i.e., no grouping. }
+\item{Lag1}{Set to TRUE if only lag 1 covariates should be included in the model fitting}
+\item{num_tree}{Number of trees.}
+\item{alpha}{Default is set to 1.}
+\item{eta}{Default is set to 1.}
+\item{phi}{Default is set to rep(1, max(tgroup) - 1).}
+\item{alpha_vec}{Default is set to rep(1, max(tgroup) - 1).}
+\item{alpha_shape_1}{Default is set to 0.5.}
+\item{opts}{See SoftBart package for details. Default is NULL and implies default settings.}
+\item{Suppress}{Indicates if the output should be suppressed. Default is TRUE}
+\item{By}{If Suppress is set to FALSE, output is provided for the By:th iteration.}
+}
+
+\value{
+Returns a list with models to use in the gcompldart function.
+
+}
+\description{
+Fits models to use in the gcompldart function using Soft Bayesian Additive Regression Trees as described in Josefsson et al XXX. , with the optional use of a sparsity-inducing prior for longitudinal data.
+}
+\examples{
+
+## NOTE: SET NUMBER OF BURN IN, SAMPLE ITERATIONS, AND SIZE OF THE PSEUDODATA HIGHER IN PRACTICE
+
+n_burn <- 10
+n_save <- 10
+n_J <- 100
+
+set.seed(1234)
+sim_lfried <- function(N, P, Sigma, sigma, lambda) {
+  rawvars <- mvrnorm(N, rep(0, P), Sigma)
+  X <- pnorm(rawvars)
+  
+  mu <- lambda[1] * (10 * sin(pi * X[,1] * X[,2]) + 20 * (X[,3] - 0.5)^2 + 10 * X[,4] + 5 * X[,5]) +
+    lambda[2] * (10 * sin(pi * X[,6] * X[,7]) + 20 * (X[,8] - 0.5)^2 + 10 * X[,9] + 5 * X[,10]) +
+    lambda[3] * (10 * sin(pi * X[,11] * X[,12]) + 20 * (X[,13] - 0.5)^2 + 10 * X[,14] + 5 * X[,15]) +
+    lambda[4] * (10 * sin(pi * X[,16] * X[,17]) + 20 * (X[,18] - 0.5)^2 + 10 * X[,19] + 5 * X[,20])
+  Y <- mu + sigma * rnorm(N)
+
+  return(data.frame(X = X, Y = Y, mu = mu))
+}
+## Simiulate dataset
+n <- 100 
+times_sim <- rep(1:4, each = 5) # grouping variable
+lambda <- c(0.25,0.5,0.75,1)
+a1 <- 0.4
+a2 <- 0.2
+a3 <- 0.1
+sig <- 10
+
+Sig<-matrix(c(c(1,0,0,0,0,a1,0,0,0,0,a2,0,0,0,0,a3,0,0,0,0),
+              c(0,1,0,0,0,0,a1,0,0,0,0,a2,0,0,0,0,a3,0,0,0),
+              c(0,0,1,0,0,0,0,a1,0,0,0,0,a2,0,0,0,0,a3,0,0),
+              c(0,0,0,1,0,0,0,0,a1,0,0,0,0,a2,0,0,0,0,a3,0),
+              c(0,0,0,0,1,0,0,0,0,a1,0,0,0,0,a2,0,0,0,0,a3),
+              c(a1,0,0,0,0,1,0,0,0,0,a1,0,0,0,0,a2,0,0,0,0),
+              c(0,a1,0,0,0,0,1,0,0,0,0,a1,0,0,0,0,a2,0,0,0),
+              c(0,0,a1,0,0,0,0,1,0,0,0,0,a1,0,0,0,0,a2,0,0),
+              c(0,0,0,a1,0,0,0,0,1,0,0,0,0,a1,0,0,0,0,a2,0),
+              c(0,0,0,0,a1,0,0,0,0,1,0,0,0,0,a1,0,0,0,0,a2),
+              c(a2,0,0,0,0,a1,0,0,0,0,1,0,0,0,0,a1,0,0,0,0),
+              c(0,a2,0,0,0,0,a1,0,0,0,0,1,0,0,0,0,a1,0,0,0),
+              c(0,0,a2,0,0,0,0,a1,0,0,0,0,1,0,0,0,0,a1,0,0),
+              c(0,0,0,a2,0,0,0,0,a1,0,0,0,0,1,0,0,0,0,a1,0),
+              c(0,0,0,0,a2,0,0,0,0,a1,0,0,0,0,1,0,0,0,0,a1),
+              c(a3,0,0,0,0,a2,0,0,0,0,a1,0,0,0,0,1,0,0,0,0),
+              c(0,a3,0,0,0,0,a2,0,0,0,0,a1,0,0,0,0,1,0,0,0),
+              c(0,0,a3,0,0,0,0,a2,0,0,0,0,a1,0,0,0,0,1,0,0),
+              c(0,0,0,a3,0,0,0,0,a2,0,0,0,0,a1,0,0,0,0,1,0),
+              c(0,0,0,0,a3,0,0,0,0,a2,0,0,0,0,a1,0,0,0,0,1)), 20, 20, byrow = TRUE)
+
+vartype_bl <- c(rep("X0", 5), rep("X", 15), "Y")
+tgroup <- c(rep(1:4,each=5),4)
+
+training_data <- sim_lfried(n, 20, Sig, sig, lambda)
+
+## Fit the model and perform g-computation
+BM <- BMfits(training_data[,1:21],
+               var.type = vartype_bl,
+               opts = Opts(num_burn = n_burn, 
+                           num_thin = n_thin, 
+                           num_save = n_save,
+                           update_s = TRUE,
+                           update_alpha = TRUE,
+                           update_tvp = FALSE,
+                           update_alpha_vec = FALSE,
+                           update_eta = FALSE,
+                           update_phi = FALSE,
+                           update_tau = TRUE,
+                           update_sigma_mu = TRUE), # opts see SoftBart
+               tgroup = tgroup)
+
+  out_gcomp <- gcompbart(training_data[,1:21],
+                     BModels = BM,
+                     var.type = vartype_bl,
+                     J = n_J,
+                     opts = Opts(num_burn = n_burn, 
+                                 num_thin = n_thin, 
+                                 num_save = n_save,
+                                 update_s = TRUE,
+                                 update_alpha = TRUE,
+                                 update_tvp = FALSE,
+                                 update_alpha_vec = FALSE,
+                                 update_eta = FALSE,
+                                 update_phi = FALSE,
+                                 update_tau = TRUE,
+                                 update_sigma_mu = TRUE), # opts see SoftBart
+                     tgroup = tgroup)
+## Results
+
+out_gcomp$summary_out
+
+}

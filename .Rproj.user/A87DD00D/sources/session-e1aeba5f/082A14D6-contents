@@ -1,0 +1,205 @@
+BayesBoot <- function(df , J) {
+  BBweights <- rBeta2009::rdirichlet(1, rep(1, nrow(df)))
+  BBdraws <- rmultinom(1, J, BBweights)
+  df0 <- as.matrix(data.frame(lapply(df, rep, BBdraws))) #repeat i^th row of input_df, BBdraw[i] times
+  return(df0)
+}
+
+expit <- function(x) {
+  exp(x)/(1+exp(x))
+}
+
+pred_comb <- function(cont, BM, MCdatatmp, IT, L1, TG, bsize){
+    if(ncol(MCdatatmp)==1) {
+        MCdata <- as.matrix(cbind(1, MCdatatmp))
+    } else {
+        MCdata <- MCdatatmp
+    }
+    
+    X <- MCdata
+    if(L1==TRUE & TG>0){
+        while(length(BM$ecdfs)<ncol(X)){
+            X <- X[,-bsize]
+        }
+    }
+
+    for(i in 1:ncol(X)) {
+        X[,i] <- BM$ecdfs[[i]](X[,i])
+    }
+    
+    if(cont == FALSE) {
+        x_hat <- pnorm(as.numeric(BM$forest$predict_iteration(X, IT)) + BM$offset)
+        new_MCdata <- cbind(MCdatatmp, rbinom(length(x_hat), 1, prob = x_hat))
+    } else if(cont == TRUE) {
+        x_hat <- as.numeric(BM$forest$predict_iteration(X, IT)) * BM$sd_Y + BM$mu_Y
+        new_MCdata <- cbind(MCdatatmp, rnorm(length(x_hat), mean = x_hat, sd = mean(BM$sigma)))
+    }
+    
+    if(L1==TRUE & TG>1){
+        new_MCdata <- new_MCdata[,-bsize]
+    } else {
+        new_MCdata <- new_MCdata
+    }
+    
+    return(new_MCdata)
+}
+
+pred_drop <- function(BM, MCdata, IT, L1, TG, bsize){
+  X <- MCdata
+  
+  if(L1==TRUE & TG>0){
+      while(length(BM$ecdfs)<ncol(X)){
+          X <- X[,-bsize]
+      }
+  }
+  
+  for(i in 1:ncol(X)) {
+    X[,i] <- BM$ecdfs[[i]](X[,i])
+  }
+  
+  x_hat <- pnorm(as.numeric(BM$forest$predict_iteration(X, IT)) + BM$offset)
+  dropout_ind <- rbinom(length(x_hat), 1, prob = x_hat)
+  
+  return(dropout_ind)
+}
+
+pred_ra <- function(cont, BM, MCdatatmp, IT, random.regime, param, above, 
+                    cutoff, nat_value, incremental, L1, TG, bsize){ #, rank){ # above = NULL
+  if(ncol(MCdatatmp)==1) {
+    MCdata <- as.matrix(cbind(1, MCdatatmp))
+  } else {
+    MCdata <- MCdatatmp
+  }
+  
+  X <- MCdata
+  
+  if(L1==TRUE & TG>0){
+      while(length(BM$ecdfs)<ncol(X)){
+          X <- X[,-bsize]
+      }
+  }
+  
+  for(i in 1:ncol(X)) {
+    X[,i] <- BM$ecdfs[[i]](X[,i])
+  }
+
+  if(nat_value == TRUE){ # based on the natural value
+    if(cont == FALSE) {
+      fi_hat <- pnorm(as.numeric(BM$forest$predict_iteration(X, IT)) + BM$offset)
+      new_fi <- rbinom(length(fi_hat), 1, prob = fi_hat)
+    } else if(cont == TRUE) {
+      fi_hat <- as.numeric(BM$forest$predict_iteration(X, IT)) * BM$sd_Y + BM$mu_Y
+      new_fi <- rnorm(length(fi_hat), mean = fi_hat, sd = mean(BM$sigma))
+      if(above == TRUE){
+        interv <- which(new_fi > cutoff)
+      } else if (above == FALSE) {
+        interv <- which(new_fi < cutoff)
+      }
+      if(random.regime == "uniform") {
+        int_dist <- runif(length(interv), param[1], param[2])
+      } else if (random.regime == "normal") {
+        int_dist <- rnorm(length(interv), param[1], param[2])
+      } else if(random.regime == "triangular"){
+        int_dist <- EnvStats::rtri(length(interv), param[1], param[2], param[3])
+      } else if (random.regime == "binomial") {
+        int_dist <- rbinom(length(interv), 1, param[1])
+      }
+      if (incremental == TRUE){
+        new_fi[interv] <- new_fi[interv] + int_dist
+        #new_fi[interv] <- ifelse(new_fi[interv]<110, 0, 1)*new_fi[interv] + ifelse(new_fi[interv]<110, 1, 0)*110
+        
+      } else {
+        new_fi[interv] <- int_dist
+      }
+
+    }
+  } else if(nat_value == FALSE){ # not based on the natural value
+    if(random.regime == "uniform") {
+      int_dist <- runif(nrow(MCdata), param[1], param[2])
+    } else if (random.regime == "normal") {
+      int_dist <- rnorm(nrow(MCdata), param[1], param[2])
+    } else if(random.regime == "triangular"){
+      int_dist <- EnvStats::rtri(nrow(MCdata), param[1], param[2], param[3])
+    } else if (random.regime == "binomial") {
+      int_dist <- rbinom(nrow(MCdata), 1, param[1])
+    }
+    if (incremental == TRUE){
+      new_fi <- new_fi + int_dist
+    } else {
+      new_fi <- int_dist
+    }
+  }
+  new_MCdata <- cbind(MCdata, new_fi)
+
+  if(L1==TRUE & TG>1){
+      new_MCdata <- new_MCdata[,-bsize]
+  } else {
+      new_MCdata <- new_MCdata
+  }
+  
+  return(new_MCdata)
+}
+
+pred_surv <- function(BM, MCdatatmp, IT, L1, TG, bsize){
+  if(ncol(MCdatatmp)==1) {
+    MCdata <- as.matrix(cbind(1, MCdatatmp))
+  } else {
+    MCdata <- MCdatatmp
+  }
+  
+  X <- MCdata
+  
+  if(L1==TRUE & TG>0){
+      while(length(BM$ecdfs)<ncol(X)){
+          X <- X[,-bsize]
+      }
+  }
+  
+  for(i in 1:ncol(X)) {
+    X[,i] <- BM$ecdfs[[i]](X[,i])
+  }
+  
+  s_hat <- pnorm(as.numeric(BM$forest$predict_iteration(X, IT)) + BM$offset)
+  return(s_hat)
+}
+
+pred_w <- function(WM, MCdatatmp, IT, L1, TG, bsize) {
+  if(ncol(MCdatatmp)==1) {
+    MCdata <- as.matrix(cbind(1, MCdatatmp))
+  } else {
+    MCdata <- MCdatatmp
+  }
+  X <- MCdata
+  for(i in 1:ncol(X)) {
+    X[,i] <- BM$ecdfs[[i]](X[,i])
+  }
+  
+  w_hat <- pnorm(as.numeric(WM$forest$predict_iteration(X, IT)) + WM$offset)
+  return(w_hat)
+}
+
+pred_y <- function(cont, BM, MCdata, IT, L1, TG, bsize) {
+  X <- MCdata
+  
+  if(L1==TRUE & TG>0){
+      while(length(BM$ecdfs)<ncol(X)){
+          X <- X[,-bsize]
+      }
+  }
+  
+  for(i in 1:ncol(X)) {
+    X[,i] <- BM$ecdfs[[i]](X[,i])
+  }
+  if(cont == FALSE) {
+    y_hat <- pnorm(as.numeric(BM$forest$predict_iteration(X, IT)) + BM$offset)
+  } else if(cont == TRUE) {
+    y_hat <- as.numeric(BM$forest$predict_iteration(X, IT)) * BM$sd_Y + BM$mu_Y
+  }
+  return(y_hat)
+}
+
+quiet <- function(x) {
+  sink(tempfile())
+  on.exit(sink())
+  invisible(force(x))
+}
