@@ -190,3 +190,4 @@ See ?Opts and ?Hypers for details.
 
 ## License
 GPL-3 
+# GcompBART
