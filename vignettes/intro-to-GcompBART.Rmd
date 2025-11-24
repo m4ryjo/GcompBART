@@ -19,9 +19,14 @@ From CRAN (once published):
 install.packages("GcompBART")
 ```
 
-# install.packages("devtools")
+# Using remotes
 ```r
-devtools::install_github("MaryJo/GcompBART")
+remotes::install_github("m4ryjo/GcompBART")
+```
+
+# Or devtools
+```r
+devtools::install_github("m4ryjo/GcompBART")
 ```
 
 ```r
