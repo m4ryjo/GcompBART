@@ -8,7 +8,7 @@ on:
 
 jobs:
   R-CMD-check:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.config.os }}
     strategy:
       matrix:
         config:
@@ -42,5 +42,7 @@ jobs:
           needs: check
 
       - name: Check
+        shell: Rscript {0}
         run: |
           rcmdcheck::rcmdcheck(args = c("--no-manual", "--as-cran"), error_on = "warning", check_dir = "check")
+#
