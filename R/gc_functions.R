@@ -17,12 +17,7 @@
 #' @param By Integer; if `Suppress = FALSE`, output is printed every `By` iterations.
 #' @param tgroup Integer vector indicating time grouping for each variable. Use `0` for static variables and positive integers for time-varying ones.
 #' @param Lag1 Logical; if TRUE, applies lag structure to time-varying variables.
-#' @param num_tree Integer; number of trees in SoftBart (default = 10).
-#' @param alpha Numeric; prior parameter for SoftBart.
-#' @param eta Numeric; prior parameter for SoftBart.
-#' @param phi Numeric vector; prior scale parameters for SoftBart.
-#' @param alpha_vec Numeric vector; prior shape parameters for SoftBart.
-#' @param alpha_shape_1 Numeric; prior shape parameter for SoftBart.
+#' @param base_hypers A list of base hyperparameters.
 #' @param ... Additional arguments passed to internal modeling functions.
 #'
 #' @return A list containing:
@@ -31,8 +26,16 @@
 #'   \item{n_Y}{Number of outcome variables.}
 #'   \item{n_S}{Number of survival variables.}
 #'   \item{n_Reg}{Number of regimes (if applicable).}
+#'   \item{num_save}{Number of saved iterations.}
+#'   \item{continuous}{Continuous variables.}
+#'   \item{iterations}{Number of iterations.}
 #'   \item{...}{Other metadata needed for `gcompbart()`.}
 #' }
+#'
+#' @note Future versions will include an optional argument `return_full = TRUE`
+#' to return additional objects such as model options (`opts`), hyperparameters
+#' (`base_hypers`), and diagnostics for model fit.
+#'
 #'
 #' @examples
 #' \dontrun{
@@ -94,12 +97,7 @@ BMfits <- function(data,
                    By = 100,
                    tgroup = rep(1,  ncol(data) - 1),
                    Lag1 = FALSE,
-                   num_tree = 10,
-                   alpha = 1,
-                   eta = 1,
-                   phi = rep(1, max(tgroup) - 1),
-                   alpha_vec = rep(1, max(tgroup) - 1),
-                   alpha_shape_1 = 0.5,
+                   base_hypers = NULL,
                    ...
 
 ) {
@@ -142,6 +140,11 @@ BMfits <- function(data,
       update_sigma = TRUE, cache_trees = TRUE
     )
 
+    # If base_hypers is NULL, create defaults
+    if (is.null(base_hypers)) {
+      base_hypers <- BaseHypers()  # Use your constructor with defaults
+    }
+
     BModels <- vector("list", ncol(data) - 1)
 
     for (i in 1:(ncol(data) - 1)) {
@@ -160,18 +163,31 @@ BMfits <- function(data,
       tmp_tg <- tgroup[which(var.type[1:i] != "S" & var.type[1:i] != "D")]
       opts_b <- if (length(unique(tmp_tg)) == 1) opts2 else opts
 
-      hypers <- make_hypers(X_train, Y_train, tmp_tg, num_tree, alpha, eta, phi, alpha_vec, alpha_shape_1)
+      # Merge with model-specific arguments
+      hypers_args <- c(base_hypers, list(X = X_train, Y = Y_train, tgroup = tmp_tg))
+
+      # Build hypers object
+      hypers <- do.call(Hypers, hypers_args)
+
+      #hypers <- make_hypers(X_train, Y_train, tmp_tg, num_tree, alpha, eta, phi, alpha_vec, alpha_shape_1)
       BModels[[i]] <- fit_model(X_train, Y_train, is_binary = !continuous[1 + i], opts_b, hypers, Suppress)
 
       if (!Suppress) print(i)
     }
+
+    iterations <- seq(from = opts$num_burn + opts$num_thin,
+                      to = opts$num_burn + opts$num_thin * opts$n_save,
+                      by = opts$num_thin)
+    n_save = opts$n_save
 
     return(list(
       BModels = BModels,
       n_Y = n_Y,
       n_S = n_S,
       n_Reg = n_Reg,
+      n_save = n_save,
       continuous = continuous,
+      iterations = iterations,
       ...
     ))
 
@@ -190,17 +206,12 @@ BMfits <- function(data,
 #' @param incremental Logical. If `TRUE`, applies incremental regime logic.
 #' @param drop_param List of parameter vectors for dropout shift modeling using triangular distribution.
 #' @param J Integer. Size of pseudo data to generate. Default is 2000.
-#' @param opts List of options passed to SoftBart.
+#' @param opts List of options. Default is NULL.
 #' @param Suppress Logical. If `TRUE`, suppresses console output. Default is `TRUE`.
 #' @param By Integer. If `Suppress = FALSE`, output is printed every `By` iterations.
 #' @param tgroup Integer vector indicating time grouping for each variable. Use `0` for static variables and positive integers for time-varying ones.
 #' @param Lag1 Logical. If `TRUE`, applies lag structure to time-varying variables.
-#' @param num_tree Integer. Number of trees in SoftBart. Default is 20.
-#' @param alpha Numeric. Prior parameter for SoftBart.
-#' @param eta Numeric. Prior parameter for SoftBart.
-#' @param phi Numeric vector. Prior scale parameters for SoftBart.
-#' @param alpha_vec Numeric vector. Prior shape parameters for SoftBart.
-#' @param alpha_shape_1 Numeric. Prior shape parameter for SoftBart.
+#' @param base_hypers  List of hypers. Default is NULL.
 #' @param BModels Optional list of pre-fitted SoftBart models.
 #' @param ... Additional arguments passed to internal functions.
 #'
@@ -211,6 +222,10 @@ BMfits <- function(data,
 #'   \item{summary_surv}{Posterior summaries of survival probabilities.}
 #'   \item{s_hat}{Posterior samples of survival probabilities.}
 #' }
+#'
+#' @note Future versions will include an optional argument `return_full = TRUE`
+#' to return additional objects such as model options (`opts`), hyperparameters
+#' (`base_hypers`), and diagnostics for model fit.
 #'
 #' @examples
 #' \dontrun{
@@ -273,12 +288,7 @@ gcompbart <- function(
     By = 100,              # Iteration interval for printing output (used only if Suppress = FALSE).
     tgroup = rep(1, ncol(data) - 1),  # Time grouping: 0 for static, >0 for time-varying variables.
     Lag1 = FALSE,
-    num_tree = 20,
-    alpha = 1,
-    eta = 1,
-    phi = rep(1, max(tgroup) - 1),
-    alpha_vec = rep(1, max(tgroup) - 1),
-    alpha_shape_1 = 0.5,
+    base_hypers = NULL,
     BModels = NULL,
     ...
 ) {
@@ -298,6 +308,8 @@ gcompbart <- function(
   n_S         <- bm_out$n_S
   n_Reg       <- bm_out$n_Reg
   continuous  <- bm_out$continuous
+  n_save      <- bm_out$n_save
+  iterations  <- bm_out$iterations
 
   ########################################################
 
@@ -306,17 +318,13 @@ gcompbart <- function(
   nrow_y <- (if (!is.null(fixed.regime) || !is.null(random.regime)) safe_val(n_Reg) else 1) * safe_val(n_Y)
   nrow_s <- (if (!is.null(fixed.regime) || !is.null(random.regime)) safe_val(n_Reg) else 1) * safe_val(n_S)
 
-  y <- matrix(nrow = nrow_y, ncol = opts$num_save)
-  s <- matrix(nrow = nrow_s, ncol = opts$num_save)
+  y <- matrix(nrow = nrow_y, ncol = n_save)
+  s <- matrix(nrow = nrow_s, ncol = n_save)
 
   b_size <- length(which(tgroup == 0)) + 1
 
-  iterations <- seq(from = opts$num_burn + opts$num_thin,
-                    to = opts$num_burn + opts$num_thin * opts$num_save,
-                    by = opts$num_thin)
-
-    ## MC-integration over "opts$num_save" iterations
-    for(it in 1:opts$num_save) {
+  ## MC-integration over "n_save" iterations
+    for(it in 1:n_save) {
         ks <- 1
         ky <- 1
         l <- 1
@@ -412,8 +420,8 @@ gcompbart <- function(
           }
         }
 
-        if(it %in% seq(0, opts$num_save, by = By)) {
-            print(paste("done ", it, " (out of ", opts$num_save,")", sep=""))
+        if(it %in% seq(0, n_save, by = By)) {
+            print(paste("done ", it, " (out of ", n_save,")", sep=""))
         }
     }
 

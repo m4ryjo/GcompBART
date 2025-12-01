@@ -33,24 +33,6 @@ safe_val <- function(x) {
 #' @description This function supports the main gcomputation workflow and is not intended for direct use.
 #' @keywords internal
 #' @export
-make_hypers <- function(X, Y, tgroup, num_tree, alpha, eta, phi, alpha_vec, alpha_shape_1) {
-  Hypers(
-    X = X,
-    Y = Y,
-    tgroup = tgroup,
-    num_tree = num_tree,
-    alpha = alpha,
-    eta = eta,
-    phi = phi,
-    alpha_vec = alpha_vec,
-    alpha_shape_1 = alpha_shape_1
-  )
-}
-
-#' @title Internal helper function
-#' @description This function supports the main gcomputation workflow and is not intended for direct use.
-#' @keywords internal
-#' @export
 get_lagged_X <- function(data, var.type, i, id, Lag1) {
   if (Lag1) {
     cols <- which((1:i) == i & var.type[1:i] != "S" & var.type[1:i] != "D")

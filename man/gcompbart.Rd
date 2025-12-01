@@ -21,12 +21,7 @@ gcompbart(
   By = 100,
   tgroup = rep(1, ncol(data) - 1),
   Lag1 = FALSE,
-  num_tree = 20,
-  alpha = 1,
-  eta = 1,
-  phi = rep(1, max(tgroup) - 1),
-  alpha_vec = rep(1, max(tgroup) - 1),
-  alpha_shape_1 = 0.5,
+  base_hypers = NULL,
   BModels = NULL,
   ...
 )
@@ -54,7 +49,7 @@ gcompbart(
 
 \item{J}{Integer. Size of pseudo data to generate. Default is 2000.}
 
-\item{opts}{List of options passed to SoftBart.}
+\item{opts}{List of options. Default is NULL.}
 
 \item{Suppress}{Logical. If `TRUE`, suppresses console output. Default is `TRUE`.}
 
@@ -64,17 +59,7 @@ gcompbart(
 
 \item{Lag1}{Logical. If `TRUE`, applies lag structure to time-varying variables.}
 
-\item{num_tree}{Integer. Number of trees in SoftBart. Default is 20.}
-
-\item{alpha}{Numeric. Prior parameter for SoftBart.}
-
-\item{eta}{Numeric. Prior parameter for SoftBart.}
-
-\item{phi}{Numeric vector. Prior scale parameters for SoftBart.}
-
-\item{alpha_vec}{Numeric vector. Prior shape parameters for SoftBart.}
-
-\item{alpha_shape_1}{Numeric. Prior shape parameter for SoftBart.}
+\item{base_hypers}{List of hypers. Default is NULL.}
 
 \item{BModels}{Optional list of pre-fitted SoftBart models.}
 
@@ -91,6 +76,11 @@ A named list containing:
 }
 \description{
 Performs Bayesian g-computation using SoftBart models to simulate counterfactual outcomes under specified regimes.
+}
+\note{
+Future versions will include an optional argument `return_full = TRUE`
+to return additional objects such as model options (`opts`), hyperparameters
+(`base_hypers`), and diagnostics for model fit.
 }
 \examples{
 \dontrun{

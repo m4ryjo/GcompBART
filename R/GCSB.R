@@ -1,3 +1,58 @@
+#' @title Create Base Hyperparameters for GcompBART
+#'
+#' @description
+#' This function defines a set of default hyperparameters for the soft BART models.
+#' These parameters control aspects of the Bayesian tree ensemble such as prior
+#' distributions, shrinkage, and the number of trees. Users can override any
+#' defaults by specifying arguments explicitly.
+#'
+#' @details
+#' The returned list is intended to be combined with model-specific arguments
+#' (e.g., `X`, `Y`, `tgroup`) when calling the internal `Hypers()` constructor.
+#'
+#' @param alpha Numeric. Shape parameter for the tree prior. Default = 1.
+#' @param eta Numeric. Controls variance shrinkage for time-varying effects. Default = 1.
+#' @param phi Numeric or vector. Controls time-varying effect scaling. Default = 1.
+#' @param alpha_vec Numeric or vector. Group-specific alpha values. Default = 1.
+#' @param alpha_shape_1 Numeric. First shape parameter for alpha prior. Default = 0.5.
+#' @param num_tree Integer. Number of trees in the ensemble. Default = 20.
+#' @param ... Additional arguments to override defaults or pass to `Hypers()`.
+
+#' @return A list of hyperparameters.
+#' @examples
+#' # Create a base hyperparameter list with defaults
+#' base_hypers <- BaseHypers()
+#'
+#' # Override some defaults
+#' base_hypers <- BaseHypers(num_tree = 50)
+#'
+#' X_train <- matrix(rnorm(100), ncol = 5)
+#' Y_train <- rnorm(20)
+#' tmp_tg <- rep(1:2, each = 10)
+#' hypers_args <- c(base_hypers, list(X = X_train, Y = Y_train, tgroup = tmp_tg))
+#' hypers <- do.call(Hypers, hypers_args)
+#'
+#' @export
+BaseHypers <- function(
+    alpha = 1,
+    eta = 1,
+    phi = 1,
+    alpha_vec = 1,
+    alpha_shape_1 = 0.5,
+    num_tree = 20,
+    ...
+) {
+  # Return a list of defaults + any overrides
+  c(list(
+    alpha = alpha,
+    eta = eta,
+    phi = phi,
+    alpha_vec = alpha_vec,
+    alpha_shape_1 = alpha_shape_1,
+    num_tree = num_tree
+  ), list(...))
+}
+
 #' @title Extended Hypers for GcompBART
 #' @description Constructs a hyper-parameter list by calling \code{SoftBart::Hypers()} for base fields
 #' and then extends it with GcompBART-specific components: \code{alpha_vec}, \code{eta}, \code{phi},

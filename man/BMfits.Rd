@@ -21,12 +21,7 @@ BMfits(
   By = 100,
   tgroup = rep(1, ncol(data) - 1),
   Lag1 = FALSE,
-  num_tree = 10,
-  alpha = 1,
-  eta = 1,
-  phi = rep(1, max(tgroup) - 1),
-  alpha_vec = rep(1, max(tgroup) - 1),
-  alpha_shape_1 = 0.5,
+  base_hypers = NULL,
   ...
 )
 }
@@ -63,17 +58,7 @@ BMfits(
 
 \item{Lag1}{Logical; if TRUE, applies lag structure to time-varying variables.}
 
-\item{num_tree}{Integer; number of trees in SoftBart (default = 10).}
-
-\item{alpha}{Numeric; prior parameter for SoftBart.}
-
-\item{eta}{Numeric; prior parameter for SoftBart.}
-
-\item{phi}{Numeric vector; prior scale parameters for SoftBart.}
-
-\item{alpha_vec}{Numeric vector; prior shape parameters for SoftBart.}
-
-\item{alpha_shape_1}{Numeric; prior shape parameter for SoftBart.}
+\item{base_hypers}{A list of base hyperparameters.}
 
 \item{...}{Additional arguments passed to internal modeling functions.}
 }
@@ -84,11 +69,19 @@ A list containing:
   \item{n_Y}{Number of outcome variables.}
   \item{n_S}{Number of survival variables.}
   \item{n_Reg}{Number of regimes (if applicable).}
+  \item{num_save}{Number of saved iterations.}
+  \item{continuous}{Continuous variables.}
+  \item{iterations}{Number of iterations.}
   \item{...}{Other metadata needed for `gcompbart()`.}
 }
 }
 \description{
 Fits Bayesian models (e.g., SoftBart) for each variable in the data according to its type and temporal structure. The fitted models are used in subsequent g-computation via `gcompbart()`.
+}
+\note{
+Future versions will include an optional argument `return_full = TRUE`
+to return additional objects such as model options (`opts`), hyperparameters
+(`base_hypers`), and diagnostics for model fit.
 }
 \examples{
 \dontrun{

@@ -1,5 +1,4 @@
 /home/m4ryj/Documents/Rpackages/GcompBART/.github/workflows/R-CMD-check.yaml="0111D95B"
-/home/m4ryj/Documents/Rpackages/GcompBART/.github/workflows/R-CMD-check.yaml.="BB38194A"
 /home/m4ryj/Documents/Rpackages/GcompBART/DESCRIPTION="77395DAC"
 /home/m4ryj/Documents/Rpackages/GcompBART/NAMESPACE="D85443DC"
 /home/m4ryj/Documents/Rpackages/GcompBART/R/GCSB.R="C1A9342B"
@@ -8,7 +7,6 @@
 /home/m4ryj/Documents/Rpackages/GcompBART/R/gc_functions.R="A3534332"
 /home/m4ryj/Documents/Rpackages/GcompBART/R/gc_softbart_probit.R="DD1794FF"
 /home/m4ryj/Documents/Rpackages/GcompBART/R/gc_softbart_regression.R="4615797D"
-/home/m4ryj/Documents/Rpackages/GcompBART/README.Rmd="85920B90"
 /home/m4ryj/Documents/Rpackages/GcompBART/man/Hypers.Rd="6D864083"
 /home/m4ryj/Documents/Rpackages/GcompBART/man/rmvnorm.Rd="FB449729"
 /home/m4ryj/Documents/Rpackages/GcompBART/src/GCfunctions.h="DEEA765C"
