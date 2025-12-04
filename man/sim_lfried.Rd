@@ -2,31 +2,70 @@
 % Please edit documentation in R/GCSB.R
 \name{sim_lfried}
 \alias{sim_lfried}
-\title{Simulate Data Using Modified Friedman Function}
+\title{Simulate Longitudinal Data Using Modified Friedman Function}
 \usage{
-sim_lfried(N, P, Sigma, sigma, lambda)
+sim_lfried(
+  N,
+  n_time = 4,
+  lags = c(0.4, 0.2, 0.1),
+  sigma = 1,
+  lambda = c(0.25, 0.5, 0.75, 1)
+)
 }
 \arguments{
-\item{N}{Number of observations.}
+\item{N}{Integer. Number of observations to simulate.}
 
-\item{P}{Number of predictors.}
+\item{n_time}{Integer. Number of time points (blocks).}
 
-\item{Sigma}{Covariance matrix for predictors.}
+\item{lags}{Numeric vector. Correlation values for each lag between time points.}
 
-\item{sigma}{Standard deviation of the noise term.}
+\item{sigma}{Numeric. Standard deviation of the noise term added to the outcome.}
 
-\item{lambda}{Numeric vector of weights for different blocks.}
+\item{lambda}{Numeric vector of weights for different predictor blocks
+(length should match \code{n_time}).}
 }
 \value{
-A data frame with predictors (X), outcome (Y), and true mean (mu).
+A data frame with simulated predictors (\code{X}), outcome (\code{Y}),
+and true mean (\code{mu}).
 }
 \description{
-Generates a dataset with correlated predictors and a nonlinear outcome structure.
+This function extends the classic Friedman function to multiple blocks of predictors,
+each contributing nonlinearly to the outcome. Predictors are correlated according
+to a user-specified covariance matrix and transformed to uniform via the normal CDF.
+}
+\details{
+Data are generated according to a modified version of Friedman's five-dimensional test function
+extended to a longitudinal setting with multiple time points.
+
+For each subject \eqn{i}, the true mean function is:
+\deqn{
+f(\mathbf{x}_i) = \sum_{t=1}^T c_t \left[ 10 \sin(\pi x_{1,it} x_{2,it}) +
+20 (x_{3,it} - 0.5)^2 + 10 x_{4,it} + 5 x_{5,it} \right]
+}
+
+where \eqn{T} is the number of time points, and \eqn{c_t} determines the time-specific
+association between predictors and the outcome. The outcome at the final time point is:
+\deqn{
+Y_{iT} \sim \mathrm{Normal}\left( f(\mathbf{X}_i), \sigma_T^2 \right)
+}
+
+with default values \eqn{T = 4}, \eqn{\sigma_T = 10}, and decreasing weights \eqn{c_t}
+to reflect stronger associations closer to the outcome time.
+
+Correlated predictors are generated using a multivariate normal distribution with covariance
+matrix \code{Sigma}, then transformed to uniform via \code{pnorm()}.
+
+The predictors are simulated from a multivariate normal distribution with
+a block-structured covariance matrix. The outcome \code{Y} is generated as:
+\deqn{
+Y = \sum_{b=1}^{n\_time} \lambda_b \left[ 10 \sin(\pi X_{b1} X_{b2}) +
+20 (X_{b3} - 0.5)^2 + 10 X_{b4} + 5 X_{b5} \right] + \epsilon
+}
+where \eqn{\epsilon \sim N(0, \sigma^2)}.
 }
 \examples{
 set.seed(123)
-Sigma <- diag(20)
-lambda <- c(0.25, 0.5, 0.75, 1)
-sim_lfried(100, 20, Sigma, 10, lambda)
+sim <- sim_lfried(N = 100, n_time = 4, lags = c(0.4, 0.2, 0.1),
+                  sigma = 1, lambda = c(0.25, 0.5, 0.75, 1))
 
 }

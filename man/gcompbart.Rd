@@ -89,20 +89,13 @@ n_thin <- 1
 n_save <- 10
 n_J <- 100
 
-set.seed(1234)
+set.seed(123)
 
 # Simulate dataset
-n <- 100
-times_sim <- rep(1:4, each = 5)
-lambda <- c(0.25, 0.5, 0.75, 1)
-a1 <- 0.4; a2 <- 0.2; a3 <- 0.1; sig <- 10
-
-Sig <- matrix(c(...), 20, 20, byrow = TRUE) # truncated for brevity
-
+training_data <- sim_lfried(N = 100, n_time = 4, lags = c(0.4, 0.2, 0.1),
+                  sigma = 1, lambda = c(0.25, 0.5, 0.75, 1))
 vartype_bl <- c(rep("X0", 5), rep("X", 15), "Y")
 tgroup <- c(rep(1:4, each = 5), 4)
-
-training_data <- sim_lfried(n, 20, Sig, sig, lambda)
 
 # Fit the model
 BM <- BMfits(training_data[, 1:21],

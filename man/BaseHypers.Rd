@@ -2,7 +2,7 @@
 % Please edit documentation in R/GCSB.R
 \name{BaseHypers}
 \alias{BaseHypers}
-\title{Create Base Hyperparameters for GcompBART}
+\title{Create Base Hyperparameters for Soft BART models.}
 \usage{
 BaseHypers(
   alpha = 1,
@@ -10,6 +10,7 @@ BaseHypers(
   phi = 1,
   alpha_vec = 1,
   alpha_shape_1 = 0.5,
+  alpha_shape_2 = 1,
   num_tree = 20,
   ...
 )
@@ -21,9 +22,15 @@ BaseHypers(
 
 \item{phi}{Numeric or vector. Controls time-varying effect scaling. Default = 1.}
 
-\item{alpha_vec}{Numeric or vector. Group-specific alpha values. Default = 1.}
+\item{alpha_vec}{Numeric or vector. Specifies ordered hyperpriors for predictor-specific
+shrinkage parameters in longitudinal models. By default, all predictors share the same
+shrinkage level (1). When using the longitudinal prior, `alpha_vec` can be set to reflect
+temporal ordering, where earlier time points receive stronger shrinkage and later time
+points less shrinkage, as described above.}
 
 \item{alpha_shape_1}{Numeric. First shape parameter for alpha prior. Default = 0.5.}
+
+\item{alpha_shape_2}{Numeric. Second shape parameter for alpha prior. Default = 1.}
 
 \item{num_tree}{Integer. Number of trees in the ensemble. Default = 20.}
 
@@ -33,12 +40,25 @@ BaseHypers(
 A list of hyperparameters.
 }
 \description{
-This function defines a set of default hyperparameters for the soft BART models.
-These parameters control aspects of the Bayesian tree ensemble such as prior
-distributions, shrinkage, and the number of trees. Users can override any
-defaults by specifying arguments explicitly.
+Defines a set of default hyperparameters for soft BART models, including options
+tailored for longitudinal data. These parameters control aspects of the Bayesian
+tree ensemble such as prior distributions, shrinkage, and the number of trees.
+Users can override any defaults by specifying arguments explicitly.
 }
 \details{
+For longitudinal settings, the `alpha_vec` parameter implements the ordered
+hyperprior structure described in [Paper Citation]. This structure introduces
+sparsity based on temporal proximity to the response: predictors measured earlier
+in time receive stronger shrinkage (higher sparsity), while those closer to the
+response are penalized less, reflecting the assumption that recent measurements
+are more informative.
+
+The ordering is achieved by setting weights:
+\deqn{c_j = 1 - \frac{t - j}{t - 1} \times 0.5}
+where \eqn{t} is the total number of time points and \eqn{j} indexes the predictor's
+time point. This results in \eqn{c_1 = 0.5} for the earliest predictors and
+\eqn{0.5 < c_{j-1} < c_j < 1} for later predictors.
+
 The returned list is intended to be combined with model-specific arguments
 (e.g., `X`, `Y`, `tgroup`) when calling the internal `Hypers()` constructor.
 }
@@ -49,6 +69,7 @@ base_hypers <- BaseHypers()
 # Override some defaults
 base_hypers <- BaseHypers(num_tree = 50)
 
+# Combine with model-specific arguments
 X_train <- matrix(rnorm(100), ncol = 5)
 Y_train <- rnorm(20)
 tmp_tg <- rep(1:2, each = 10)

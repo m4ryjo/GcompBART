@@ -1,24 +1,43 @@
-#' @title Create Base Hyperparameters for GcompBART
+#' @title Create Base Hyperparameters for Soft BART models.
 #'
 #' @description
-#' This function defines a set of default hyperparameters for the soft BART models.
-#' These parameters control aspects of the Bayesian tree ensemble such as prior
-#' distributions, shrinkage, and the number of trees. Users can override any
-#' defaults by specifying arguments explicitly.
+#' Defines a set of default hyperparameters for soft BART models, including options
+#' tailored for longitudinal data. These parameters control aspects of the Bayesian
+#' tree ensemble such as prior distributions, shrinkage, and the number of trees.
+#' Users can override any defaults by specifying arguments explicitly.
 #'
 #' @details
+#' For longitudinal settings, the `alpha_vec` parameter implements the ordered
+#' hyperprior structure described in [Paper Citation]. This structure introduces
+#' sparsity based on temporal proximity to the response: predictors measured earlier
+#' in time receive stronger shrinkage (higher sparsity), while those closer to the
+#' response are penalized less, reflecting the assumption that recent measurements
+#' are more informative.
+#'
+#' The ordering is achieved by setting weights:
+#' \deqn{c_j = 1 - \frac{t - j}{t - 1} \times 0.5}
+#' where \eqn{t} is the total number of time points and \eqn{j} indexes the predictor's
+#' time point. This results in \eqn{c_1 = 0.5} for the earliest predictors and
+#' \eqn{0.5 < c_{j-1} < c_j < 1} for later predictors.
+#'
 #' The returned list is intended to be combined with model-specific arguments
 #' (e.g., `X`, `Y`, `tgroup`) when calling the internal `Hypers()` constructor.
 #'
 #' @param alpha Numeric. Shape parameter for the tree prior. Default = 1.
 #' @param eta Numeric. Controls variance shrinkage for time-varying effects. Default = 1.
 #' @param phi Numeric or vector. Controls time-varying effect scaling. Default = 1.
-#' @param alpha_vec Numeric or vector. Group-specific alpha values. Default = 1.
+#' @param alpha_vec Numeric or vector. Specifies ordered hyperpriors for predictor-specific
+#' shrinkage parameters in longitudinal models. By default, all predictors share the same
+#' shrinkage level (1). When using the longitudinal prior, `alpha_vec` can be set to reflect
+#' temporal ordering, where earlier time points receive stronger shrinkage and later time
+#' points less shrinkage, as described above.
 #' @param alpha_shape_1 Numeric. First shape parameter for alpha prior. Default = 0.5.
+#' @param alpha_shape_2 Numeric. Second shape parameter for alpha prior. Default = 1.
 #' @param num_tree Integer. Number of trees in the ensemble. Default = 20.
 #' @param ... Additional arguments to override defaults or pass to `Hypers()`.
-
+#'
 #' @return A list of hyperparameters.
+#'
 #' @examples
 #' # Create a base hyperparameter list with defaults
 #' base_hypers <- BaseHypers()
@@ -26,6 +45,7 @@
 #' # Override some defaults
 #' base_hypers <- BaseHypers(num_tree = 50)
 #'
+#' # Combine with model-specific arguments
 #' X_train <- matrix(rnorm(100), ncol = 5)
 #' Y_train <- rnorm(20)
 #' tmp_tg <- rep(1:2, each = 10)
@@ -33,40 +53,45 @@
 #' hypers <- do.call(Hypers, hypers_args)
 #'
 #' @export
-BaseHypers <- function(
-    alpha = 1,
-    eta = 1,
-    phi = 1,
-    alpha_vec = 1,
-    alpha_shape_1 = 0.5,
-    num_tree = 20,
-    ...
-) {
-  # Return a list of defaults + any overrides
-  c(list(
-    alpha = alpha,
-    eta = eta,
-    phi = phi,
-    alpha_vec = alpha_vec,
-    alpha_shape_1 = alpha_shape_1,
-    num_tree = num_tree
-  ), list(...))
+BaseHypers <- function(alpha = 1, eta = 1, phi = 1,
+                       alpha_vec = 1, alpha_shape_1 = 0.5,
+                       alpha_shape_2 = 1, num_tree = 20, ...)
+{  c(list(alpha = alpha, eta = eta, phi = phi,
+          alpha_vec = alpha_vec, alpha_shape_1 = alpha_shape_1,
+          alpha_shape_2 = alpha_shape_2, num_tree = num_tree), list(...))
 }
 
-#' @title Extended Hypers for GcompBART
-#' @description Constructs a hyper-parameter list by calling \code{SoftBart::Hypers()} for base fields
+#' @title Extended Hypers for Soft BART Models
+#'
+#' @description
+#' Constructs a hyperparameter list by calling \code{SoftBart::Hypers()} for base fields
 #' and then extends it with GcompBART-specific components: \code{alpha_vec}, \code{eta}, \code{phi},
-#' and time-grouping information (\code{tgroup}, \code{tgroup_size}). This approach preserves SoftBart defaults
-#' and future improvements while adding longitudinal extensions.
+#' and time-grouping information (\code{tgroup}, \code{tgroup_size}). This approach preserves
+#' SoftBart defaults while adding longitudinal extensions.
+#'
+#' @details
+#' For longitudinal settings, the \code{alpha_vec} parameter implements the ordered hyperprior
+#' structure described in [Paper Citation]. This structure introduces sparsity based on
+#' temporal proximity to the response: predictors measured earlier in time receive stronger
+#' shrinkage (higher sparsity), while those closer to the response are penalized less, reflecting
+#' the assumption that recent measurements are more informative.
+#'
+#' The ordering is achieved by setting weights:
+#' \deqn{c_j = 1 - \frac{t - j}{t - 1} \times 0.5}
+#' where \eqn{t} is the total number of time points and \eqn{j} indexes the predictor's time point.
+#' This results in \eqn{c_1 = 0.5} for the earliest predictors and
+#' \eqn{0.5 < c_{j-1} < c_j < 1} for later predictors.
 #'
 #' @param X Matrix of predictors (same semantics as \code{SoftBart::Hypers}).
 #' @param Y Response vector (same semantics as \code{SoftBart::Hypers}).
 #' @param group Optional grouping vector for SoftBart trees.
 #' @param tgroup Integer vector of length \code{ncol(X)} specifying time-group assignments for predictors.
 #'   If \code{NULL}, defaults to all predictors in one group.
-#' @param alpha_vec Numeric; GcompBART-specific prior parameter for longitudinal alpha.
-#' @param eta Numeric; GcompBART-specific prior parameter for eta.
-#' @param phi Numeric; GcompBART-specific prior parameter for phi.
+#' @param alpha_vec Numeric or vector. Specifies ordered hyperpriors for predictor-specific
+#' shrinkage parameters in longitudinal models. By default, all predictors share the same shrinkage level (1).
+#' When using the longitudinal prior, \code{alpha_vec} can be set to reflect temporal ordering.
+#' @param eta Numeric; GcompBART-specific prior parameter for variance shrinkage. Default = 1.
+#' @param phi Numeric or vector; GcompBART-specific prior parameter for time-varying effect scaling. Default = 1.
 #' @inheritParams SoftBart::Hypers
 #'
 #' @return A list containing all fields from \code{SoftBart::Hypers()} plus:
@@ -78,9 +103,15 @@ BaseHypers <- function(
 #' }
 #'
 #' @examples
-#' X <- matrix(rnorm(100), nrow = 20)
-#' Y <- rnorm(20)
-#' hypers <- Hypers(X, Y, tgroup = c(0, 1, 1, 2), alpha_vec = 0.5)
+#' # Example: Construct hypers for longitudinal data
+#' X_train <- matrix(rnorm(100), ncol = 5)
+#' Y_train <- rnorm(20)
+#' tmp_tg <- rep(1:2, each = 10)
+#'
+#' hypers <- Hypers(X = X_train, Y = Y_train, tgroup = tmp_tg,
+#'                  alpha_vec = c(0.5, 0.75, 0.9, 0.95, 1),
+#'                  eta = 1, phi = 1)
+#'
 #' @export
 Hypers <- function(
     X, Y, group = NULL, tgroup = NULL,
@@ -200,37 +231,122 @@ MakeForest <- function(hypers, opts) {
   return(new(mf$Forest, hypers, opts))
 }
 
-#' Simulate Data Using Modified Friedman Function
+
+
+#' @title #' Create a Longitudinal Covariance Matrix
+#' @description Constructs a block-structured covariance matrix for longitudinal data,
+#' where correlations between time points decay according to specified lag values.
 #'
-#' Generates a dataset with correlated predictors and a nonlinear outcome structure.
+#' @param n_time Integer. Number of time points.
+#' @param lags Numeric vector. Correlation values for each lag (e.g., \code{c(a1, a2, a3)}).
 #'
-#' @param N Number of observations.
-#' @param P Number of predictors.
-#' @param Sigma Covariance matrix for predictors.
-#' @param sigma Standard deviation of the noise term.
-#' @param lambda Numeric vector of weights for different blocks.
+#' @return A \code{(n_time * 5) x (n_time * 5)} covariance matrix.
+#' @examples
+#' # Example: 4 time points, 3 lags
+#' make_longitudinal_cov(n_time = 4, lags = c(0.4, 0.2, 0.1))
 #'
-#' @return A data frame with predictors (X), outcome (Y), and true mean (mu).
+#' @export
+# Helper function for covariance
+make_longitudinal_cov <- function(n_time, lags) {
+  p <- n_time * 5 # 5 variables per time point.
+  Sig <- matrix(0, p, p)
+  diag(Sig) <- 1
+
+  for (lag in seq_along(lags)) {
+    a <- lags[lag]
+    for (t in 1:(p - lag * 5)) {
+      Sig[t, t + lag * 5] <- a
+      Sig[t + lag * 5, t] <- a
+    }
+  }
+  Sig
+}
+
+
+#' @title Simulate Longitudinal Data Using Modified Friedman Function
+#'
+#' @description
+#' This function extends the classic Friedman function to multiple blocks of predictors,
+#' each contributing nonlinearly to the outcome. Predictors are correlated according
+#' to a user-specified covariance matrix and transformed to uniform via the normal CDF.
+#'
+#' @details
+#' Data are generated according to a modified version of Friedman's five-dimensional test function
+#' extended to a longitudinal setting with multiple time points.
+#'
+#' For each subject \eqn{i}, the true mean function is:
+#' \deqn{
+#' f(\mathbf{x}_i) = \sum_{t=1}^T c_t \left[ 10 \sin(\pi x_{1,it} x_{2,it}) +
+#' 20 (x_{3,it} - 0.5)^2 + 10 x_{4,it} + 5 x_{5,it} \right]
+#' }
+#'
+#' where \eqn{T} is the number of time points, and \eqn{c_t} determines the time-specific
+#' association between predictors and the outcome. The outcome at the final time point is:
+#' \deqn{
+#' Y_{iT} \sim \mathrm{Normal}\left( f(\mathbf{X}_i), \sigma_T^2 \right)
+#' }
+#'
+#' with default values \eqn{T = 4}, \eqn{\sigma_T = 10}, and decreasing weights \eqn{c_t}
+#' to reflect stronger associations closer to the outcome time.
+#'
+#' Correlated predictors are generated using a multivariate normal distribution with covariance
+#' matrix \code{Sigma}, then transformed to uniform via \code{pnorm()}.
+#'
+#' @param N Integer. Number of observations to simulate.
+#' @param n_time Integer. Number of time points (blocks).
+#' @param lags Numeric vector. Correlation values for each lag between time points.
+#' @param sigma Numeric. Standard deviation of the noise term added to the outcome.
+#' @param lambda Numeric vector of weights for different predictor blocks
+#'   (length should match \code{n_time}).
+#'
+#' @details
+#' The predictors are simulated from a multivariate normal distribution with
+#' a block-structured covariance matrix. The outcome \code{Y} is generated as:
+#' \deqn{
+#' Y = \sum_{b=1}^{n\_time} \lambda_b \left[ 10 \sin(\pi X_{b1} X_{b2}) +
+#' 20 (X_{b3} - 0.5)^2 + 10 X_{b4} + 5 X_{b5} \right] + \epsilon
+#' }
+#' where \eqn{\epsilon \sim N(0, \sigma^2)}.
+#'
+#' @return A data frame with simulated predictors (\code{X}), outcome (\code{Y}),
+#' and true mean (\code{mu}).
+#'
 #' @examples
 #' set.seed(123)
-#' Sigma <- diag(20)
-#' lambda <- c(0.25, 0.5, 0.75, 1)
-#' sim_lfried(100, 20, Sigma, 10, lambda)
+#' sim <- sim_lfried(N = 100, n_time = 4, lags = c(0.4, 0.2, 0.1),
+#'                   sigma = 1, lambda = c(0.25, 0.5, 0.75, 1))
 #'
-#' @importFrom MASS mvrnorm
 #' @export
-sim_lfried <- function(N, P, Sigma, sigma, lambda) {
+#'
+sim_lfried <- function(N, n_time = 4, lags = c(0.4, 0.2, 0.1),
+                       sigma = 1, lambda =  c(0.25,0.5,0.75,1)) {
+
+  P <- n_time * 5
+  Sigma <- make_longitudinal_cov(n_time, lags)
+
+  # Simulate predictors
   rawvars <- MASS::mvrnorm(N, rep(0, P), Sigma)
   X <- pnorm(rawvars)
 
-  mu <- lambda[1] * (10 * sin(pi * X[,1] * X[,2]) + 20 * (X[,3] - 0.5)^2 + 10 * X[,4] + 5 * X[,5]) +
-    lambda[2] * (10 * sin(pi * X[,6] * X[,7]) + 20 * (X[,8] - 0.5)^2 + 10 * X[,9] + 5 * X[,10]) +
-    lambda[3] * (10 * sin(pi * X[,11] * X[,12]) + 20 * (X[,13] - 0.5)^2 + 10 * X[,14] + 5 * X[,15]) +
-    lambda[4] * (10 * sin(pi * X[,16] * X[,17]) + 20 * (X[,18] - 0.5)^2 + 10 * X[,19] + 5 * X[,20])
+  # Compute mu based on blocks
+  mu <- numeric(N)
+  for (block in seq_len(n_time)) {
+    start <- (block - 1) * 5 + 1
+    end <- block * 5
+    mu <- mu + lambda[block] * (
+      10 * sin(pi * X[, start] * X[, start + 1]) +
+        20 * (X[, start + 2] - 0.5)^2 +
+        10 * X[, start + 3] +
+        5 * X[, start + 4]
+    )
+  }
+
+  # Outcome
   Y <- mu + sigma * rnorm(N)
 
-  data.frame(X = X, Y = Y, mu = mu)
+  data.frame(X, Y = Y, mu = mu)
 }
+
 
 #' @title rmvnorm
 #' @description Internal helper wrapping C++ for generating random multivariate normal samples.

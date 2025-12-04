@@ -2,7 +2,7 @@
 % Please edit documentation in R/GCSB.R
 \name{Hypers}
 \alias{Hypers}
-\title{Extended Hypers for GcompBART}
+\title{Extended Hypers for Soft BART Models}
 \usage{
 Hypers(
   X,
@@ -42,11 +42,13 @@ If \code{NULL}, defaults to all predictors in one group.}
 
 \item{alpha}{Positive constant controlling the sparsity level.}
 
-\item{eta}{Numeric; GcompBART-specific prior parameter for eta.}
+\item{eta}{Numeric; GcompBART-specific prior parameter for variance shrinkage. Default = 1.}
 
-\item{phi}{Numeric; GcompBART-specific prior parameter for phi.}
+\item{phi}{Numeric or vector; GcompBART-specific prior parameter for time-varying effect scaling. Default = 1.}
 
-\item{alpha_vec}{Numeric; GcompBART-specific prior parameter for longitudinal alpha.}
+\item{alpha_vec}{Numeric or vector. Specifies ordered hyperpriors for predictor-specific
+shrinkage parameters in longitudinal models. By default, all predictors share the same shrinkage level (1).
+When using the longitudinal prior, \code{alpha_vec} can be set to reflect temporal ordering.}
 
 \item{beta}{Parameter penalizing tree depth in the branching process prior.}
 
@@ -88,13 +90,32 @@ A list containing all fields from \code{SoftBart::Hypers()} plus:
 }
 }
 \description{
-Constructs a hyper-parameter list by calling \code{SoftBart::Hypers()} for base fields
+Constructs a hyperparameter list by calling \code{SoftBart::Hypers()} for base fields
 and then extends it with GcompBART-specific components: \code{alpha_vec}, \code{eta}, \code{phi},
-and time-grouping information (\code{tgroup}, \code{tgroup_size}). This approach preserves SoftBart defaults
-and future improvements while adding longitudinal extensions.
+and time-grouping information (\code{tgroup}, \code{tgroup_size}). This approach preserves
+SoftBart defaults while adding longitudinal extensions.
+}
+\details{
+For longitudinal settings, the \code{alpha_vec} parameter implements the ordered hyperprior
+structure described in [Paper Citation]. This structure introduces sparsity based on
+temporal proximity to the response: predictors measured earlier in time receive stronger
+shrinkage (higher sparsity), while those closer to the response are penalized less, reflecting
+the assumption that recent measurements are more informative.
+
+The ordering is achieved by setting weights:
+\deqn{c_j = 1 - \frac{t - j}{t - 1} \times 0.5}
+where \eqn{t} is the total number of time points and \eqn{j} indexes the predictor's time point.
+This results in \eqn{c_1 = 0.5} for the earliest predictors and
+\eqn{0.5 < c_{j-1} < c_j < 1} for later predictors.
 }
 \examples{
-X <- matrix(rnorm(100), nrow = 20)
-Y <- rnorm(20)
-hypers <- Hypers(X, Y, tgroup = c(0, 1, 1, 2), alpha_vec = 0.5)
+# Example: Construct hypers for longitudinal data
+X_train <- matrix(rnorm(100), ncol = 5)
+Y_train <- rnorm(20)
+tmp_tg <- rep(1:2, each = 10)
+
+hypers <- Hypers(X = X_train, Y = Y_train, tgroup = tmp_tg,
+                 alpha_vec = c(0.5, 0.75, 0.9, 0.95, 1),
+                 eta = 1, phi = 1)
+
 }
