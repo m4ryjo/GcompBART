@@ -9,7 +9,4 @@ BayesBoot(df, J)
 \description{
 This function supports the main gcomputation workflow and is not intended for direct use.
 }
-\details{
-Helper functions used in BMfits and gcompbart
-}
 \keyword{internal}

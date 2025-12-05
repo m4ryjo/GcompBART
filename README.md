@@ -4,7 +4,7 @@ output: github_document
 ---
 
 # Introduction
-GcompBART is an package for performing G-computation using Bayesian Additive Regression Trees.
+GcompBART is an R package for performing G-computation using Bayesian Additive Regression Trees.
 It leverages the modeling capabilities of SoftBart (<https://cran.r-project.org/package=SoftBart>) 
 internally to fit flexible observed data models, with the optional use of 
 sparsity-inducing priors for longitudinal data as described in 

@@ -14,7 +14,7 @@ Description: Performs g-computation using Soft Bayesian Additive Regression Tree
               with optional sparsity-inducing priors for longitudinal data.
 License: GPL-3
 Depends: R (>= 4.0.0)
-Imports: Rcpp, SoftBart, rBeta2009, EnvStats, stats, methods, truncnorm, MASS
+Imports: Rcpp, SoftBart, stats, methods, truncnorm, MASS
 LinkingTo: Rcpp, RcppArmadillo
 SystemRequirements: C++17
 Encoding: UTF-8

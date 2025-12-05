@@ -379,7 +379,7 @@ gcompbart <- function(
             drop_shift <- if (is.null(drop_param)) {
               lapply(drop, function(f) f * 0)
             } else {
-              lapply(drop, function(f) f * EnvStats::rtri(length(f), drop_param[[d]][1], drop_param[[d]][2], drop_param[[d]][3]))
+              lapply(drop, function(f) f * rtri(length(f), drop_param[[d]][1], drop_param[[d]][2], drop_param[[d]][3]))
             }
 
           } else if (var.type[j] == "Y") {
