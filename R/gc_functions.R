@@ -38,7 +38,6 @@
 #'
 #'
 #' @examples
-#' \dontrun{
 #' n_burn <- 10
 #' n_thin <- 1
 #' n_save <- 10
@@ -72,7 +71,6 @@
 #'
 #' # Results
 #' out_gcomp$summary_out
-#' }
 #' @export
 BMfits <- function(data,
                    var.type,
@@ -221,7 +219,6 @@ BMfits <- function(data,
 #' (`base_hypers`), and diagnostics for model fit.
 #'
 #' @examples
-#' \dontrun{
 #' n_burn <- 10
 #' n_thin <- 1
 #' n_save <- 10
@@ -255,7 +252,7 @@ BMfits <- function(data,
 #'
 #' # Results
 #' out_gcomp$summary_out
-#' }
+#'
 #' @export
 gcompbart <- function(
     data,                  # Matrix or data frame with confounders, exposures, outcomes, and mortality indicators in temporal order.

@@ -84,7 +84,6 @@ to return additional objects such as model options (`opts`), hyperparameters
 (`base_hypers`), and diagnostics for model fit.
 }
 \examples{
-\dontrun{
 n_burn <- 10
 n_thin <- 1
 n_save <- 10
@@ -118,5 +117,4 @@ out_gcomp <- gcompbart(training_data[, 1:21],
 
 # Results
 out_gcomp$summary_out
-}
 }
